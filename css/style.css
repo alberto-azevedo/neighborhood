@@ -49,7 +49,7 @@ body {
     align-items: baseline;
 }
 .show-box {
-    transform: translate3d(0, 2, 0);
+    transform: translate3d(0, 2em, 0);
     transition: transform 0.2s;
     width: 12em;
 }
