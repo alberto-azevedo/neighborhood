@@ -3,10 +3,19 @@
 var map;
 var geocoder = null;
 var fmtAddress = {}; // formated adrresses from geo api.
-var artWiki = {}; // articles wikipedia about the city
+var artWiki = {}; // articles wikipedia about the type of place
 var largeInfowindow;
 var defaultIcon;
 var highlightedIcon;
+var myView;
+
+function googleError() {
+    $('#error').attr('display', '');
+    $('#error').attr('height', '100%');
+    $('#map').attr('display', 'block');
+    $('#map').attr('height', 0);
+    initApp();
+}
 
 function initMap() {
 
@@ -17,202 +26,258 @@ function initMap() {
         },
         zoom: 18
     });
-	largeInfowindow = new google.maps.InfoWindow();
-	defaultIcon = makeMarkerIcon('0091ff');
-	highlightedIcon = makeMarkerIcon('FFFF24');
-	setTimeout(initmarkers, 50); // start makers
-    setTimeout(updAdress, 200); // start update adresses
+    if (typeof(map) == 'undefined') {
+        googleError();
+    }
+    largeInfowindow = new google.maps.InfoWindow();
+    defaultIcon = makeMarkerIcon('0091ff');
+    highlightedIcon = makeMarkerIcon('FFFF24');
 
+    initApp();
+
+    setTimeout(updWikiArticles, 150); // start update wiki articles
+    setTimeout(initmarkers, 80); // start makers
+    setTimeout(updAdress, 350); // start update adresses
+    //menu on for wide screen
+    if ($(window).width() >= 800) {
+        toggleMenu();
+    }
 };
 
 
 var markers = [];
 
 function initmarkers() {
-	myView.placeList().forEach(function(place) {
-		// Get the position from the location array.
-		var position = {
-			lat: place.loc().lat,
-			lng: place.loc().lng
-		};
-		var title = place.name();
-		// Create a marker per location, and put into markers array.
-		var marker = new google.maps.Marker({
-			position: position,
-			title: title,
-			animation: google.maps.Animation.DROP,
-			icon: defaultIcon,
-			id: place.id()
-		});
-		marker.setMap(map);
-		// Push the marker to our array of markers.
-		markers.push(marker);
-		// Create an onclick event to open the large infowindow at each marker.
-		marker.addListener('click', function() {
-			populateInfoWindow(this, largeInfowindow, place);
-		});
+    myView.placeList().forEach(function(place) {
+        // Get the position from the location array.
+        var position = {
+            lat: place.loc().lat,
+            lng: place.loc().lng
+        };
+        var title = place.name();
+        // Create a marker per location, and put into markers array.
+        var marker = new google.maps.Marker({
+            position: position,
+            title: title,
+            animation: google.maps.Animation.DROP,
+            icon: defaultIcon,
+            id: place.id()
+        });
+        marker.setMap(map);
+        // Push the marker to our array of markers.
+        markers.push(marker);
+        // Create an onclick event to open the large infowindow at each marker.
+        marker.addListener('click', function() {
+            hndMarkerClicked(marker, place);
+        });
 
-		// Two event listeners - one for mouseover, one for mouseout,
-		// to change the colors back and forth.
-		marker.addListener('mouseover', function() {
-			this.setIcon(highlightedIcon);
-			myView.togleSelected(this.title);
-		});
-		marker.addListener('mouseout', function() {
-			this.setIcon(defaultIcon);
-			myView.togleSelected(this.title);
-		});
-	});
+
+        // Two event listeners - one for mouseover, one for mouseout,
+        // to change the colors back and forth.
+        marker.addListener('mouseover', function() {
+            this.setIcon(highlightedIcon);
+            myView.select(this.title);
+        });
+        marker.addListener('mouseout', function() {
+            this.setIcon(defaultIcon);
+            myView.unselect(this.title);
+        });
+    });
 }
 
+function initApp() {
+    myView = new ViewModel();
+    //  select item list
+    myView.select = function(name) {
+        myView.placeList().forEach(function(place) {
+            if (place.name() === name) {
+                if (place.selected) {
+                    place.selected(true);
+                    markerSetIconById(place.id(), highlightedIcon);
+                };
+            } else {
+                place.selected(false);
+                markerSetIconById(place.id(), defaultIcon);
+            };
+        });
+    };
+
+    // unselect all itens
+    myView.unselect = function() {
+        myView.placeList().forEach(function(place) {
+            place.selected(false);
+            markerSetIconById(place.id(), defaultIcon);
+        });
+    };
+
+    ko.applyBindings(myView);
+}
+// reacts when maker clicked
+function hndMarkerClicked(marker, place) {
+    animate(marker);
+    populateInfoWindow(marker, largeInfowindow, place);
+};
+
+// animate marker for 2 secs
+function animate(marker) {
+    marker.setAnimation(google.maps.Animation.BOUNCE);
+    var self = marker;
+    setTimeout(function() {
+        self.setAnimation(null);
+    }, 2000);
+};
+
 function populateInfoWindow(marker, infowindow, place) {
-	// Check to make sure the infowindow is not already opened on this marker.
-	if (infowindow.marker != marker) {
-		infowindow.marker = marker;
-		var position = {
-			lat: place.loc().lat,
-			lng: place.loc().lng
-		};
-		geocodeAddress(position, place);
-		var infoCont = '<div>' + marker.title + '<br>' + fmtAddress[place.id()] + '</br></div><hr>';
-		infoCont += artWiki['Recife'];
-		infowindow.setContent(infoCont);
-		infowindow.open(map, marker);
-		// Make sure the marker property is cleared if the infowindow is closed.
-		infowindow.addListener('closeclick', function() {
-			infowindow.marker = null;
-		});
-	}
+    // Check to make sure the infowindow is not already opened on this marker.
+    if (infowindow.marker != marker) {
+        infowindow.marker = marker;
+        var position = {
+            lat: place.loc().lat,
+            lng: place.loc().lng
+        };
+        geocodeAddress(position, place);
+        var infoCont = '<div>' + marker.title + '<br>' + fmtAddress[place.id()] + '</br></div><hr>';
+        var articleWiki = (typeof(artWiki[place.type()]) != "undefined") ? artWiki[place.type()] : "<em>Não foi possível acessar a Wikipédia<em>";
+        infoCont += articleWiki;
+        infowindow.setContent(infoCont);
+        infowindow.open(map, marker);
+        // Make sure the marker property is cleared if the infowindow is closed.
+        infowindow.addListener('closeclick', function() {
+            infowindow.marker = null;
+        });
+    };
 };
 
 function makeMarkerIcon(markerColor) {
-	var markerImage = new google.maps.MarkerImage(
-		'http://chart.googleapis.com/chart?chst=d_map_spin&chld=1.15|0|' + markerColor +
-		'|40|_|%E2%80%A2',
-		new google.maps.Size(21, 34),
-		new google.maps.Point(0, 0),
-		new google.maps.Point(10, 34),
-		new google.maps.Size(21, 34));
-	return markerImage;
-};
-
-function mouseEvent(type, id) {
-	if (type == 'mouseover') {
-		markerSetIconById(id, highlightedIcon);
-	} else { // mouseout
-		markerSetIconById(id, defaultIcon);
-	}
-
-};
-
-function markerSetIconById(id, icon) {
-	markers.forEach(function(marker) {
-		if (marker.id == id) {
-			marker.setIcon(icon);
-		}
-	});
+    var markerImage = new google.maps.MarkerImage(
+        'http://chart.googleapis.com/chart?chst=d_map_spin&chld=1.15|0|' + markerColor +
+        '|40|_|%E2%80%A2',
+        new google.maps.Size(21, 34),
+        new google.maps.Point(0, 0),
+        new google.maps.Point(10, 34),
+        new google.maps.Size(21, 34));
+    return markerImage;
 };
 
 function listItemClicked(id) {
-	markers.forEach(function(marker) {
-		if (marker.id == id) {
-			myView.setPlaceById(id);
-			populateInfoWindow(marker, largeInfowindow, myView.currentPlace());
-		}
-	});
+    markers.forEach(function(marker) {
+        if (marker.id == id) {
+            myView.setPlaceById(id);
+            hndMarkerClicked(marker, myView.currentPlace())
+        };
+    });
 };
 
-// the jQuery events below syncronizes map and list itens iteration.
-$('[listItem*="listItem"]').mouseover(function() {
-		mouseEvent("mouseover", $(this).attr("class"));
-	})
-	.mouseout(function() {
-		mouseEvent("mouseout", $(this).attr("class"));
-	}).click(function() {
-		listItemClicked($(this).attr("class"));
-	});
+function markerSetIconById(id, icon) {
+    markers.forEach(function(marker) {
+        if (marker.id == id) {
+            marker.setIcon(icon);
+        };
+    });
+};
 
-$('#addressFilter').keyup(function() {
-	var data = $(this).val();
-	markers.forEach(function(marker) {
-		if (marker.title.toLowerCase().indexOf(data.toLowerCase()) !== -1) {
-			marker.setMap(map);
-		} else {
-			marker.setMap(null);
-		};
-	});
-});
+//
+function setMarker(id, visible) {
+    markers.forEach(function(marker) {
+        if (marker.id == id) {
+            if (visible) {
+                marker.setMap(map);
+            } else {
+                marker.setMap(null);
+            };
+        };
+    });
+};
 
-
-var lastPlaceUpd = 0;
+var lastAddrUpd = 0;
 
 function updAdress() {
-	// note: used for in because break statment, for in has no break.
-	for (var indx in myView.placeList()) {
-		var place = myView.placeList()[indx];
-		if (lastPlaceUpd == indx) {
-			lastPlaceUpd++;
-			var position = {
-				lat: place.loc().lat,
-				lng: place.loc().lng
-			};
-			var geoPlace = place;
-			geocodeAddress(position, geoPlace);
-			setTimeout(updAdress, 250); //recursive, kind of
-			break; // wait next cycle, avoid google APIs errors for too many of calls.
-		}
-	};
+    // note: used for in because break statment, for in has no break.
+    for (var indx in myView.placeList()) {
+        var place = myView.placeList()[indx];
+        if (lastAddrUpd == indx) {
+            lastAddrUpd++;
+            var position = {
+                lat: place.loc().lat,
+                lng: place.loc().lng
+            };
+            var geoPlace = place;
+            geocodeAddress(position, geoPlace);
+            setTimeout(updAdress, 250); //recursive, kind of
+            break; // wait next cycle, avoid google APIs errors for too many of calls.
+        };
+    };
 }
 
 function geocodeAddress(position, place) {
-	geocoder = geocoder == null ? new google.maps.Geocoder():geocoder;
-	if (fmtAddress[place.id()]) { // fecthed? nothing to do
-		return;
-	};
-	var location = new google.maps.LatLng({
-		lat: position.lat,
-		lng: position.lng
-	});
-	geocoder.geocode({
-		'location': location
-	}, function(results, status) {
-		if (status === google.maps.GeocoderStatus.OK) {
-			myView.setAddress(results[0].place_id, results[0].formatted_address);
-			fmtAddress[results[0].place_id] = results[0].formatted_address;
-		} else {
-			alert('Geocode was not successful for the following reason: ' + status);
-			//fmtAddress[results[0].place_id] = 'ERROR GEOCODING...';
-		}
-	});
+    geocoder = geocoder == null ? new google.maps.Geocoder() : geocoder;
+    if (fmtAddress[place.id()]) { // fecthed? nothing to do
+        return;
+    };
+    var location = new google.maps.LatLng({
+        lat: position.lat,
+        lng: position.lng
+    });
+    geocoder.geocode({
+        'location': location
+    }, function(results, status) {
+        if (status === google.maps.GeocoderStatus.OK) {
+            myView.setAddress(results[0].place_id, results[0].formatted_address);
+            fmtAddress[results[0].place_id] = results[0].formatted_address;
+        } else {
+            alert('Geocode was not successful for the following reason: ' + status);
+        };
+    });
 };
 
 // wikipedia api call ,mainly from udacity ajax course.
-var wikiUrl = 'https://en.wikipedia.org/w/api.php?action=opensearch&search=' + 'Recife';
-wikiUrl += '&format=json&callback=wikiCallBack';
-var wikiRequestTimeout = setTimeout(function() {
-console.log("failed to get wikipedia resources");
-}, 8000);
+function getWikiArticle(type) {
+    var wikiUrl = 'https://pt.wikipedia.org/w/api.php?action=opensearch&search=' + type;
+    wikiUrl += '&format=json&callback=wikiCallBack';
+    $.ajax({
+        url: wikiUrl,
+        dataType: "jsonp",
+        context: document.body,
+        timeout: 1000
+    }).done(function(data) {
+        var articleList = data[1];
+        artWiki[type] = '<div class="wikipedia-container">';
+        artWiki[type] += '<h3>Artigos Wikipedia Relevantes sobre ' + type + '</h3>';
+        articleList.forEach(function(article) {
+            var url = 'https://pt.wikipedia.org/wiki/' + article;
+            artWiki[type] += '<li><a href="' + url + '">' +
+                article + '</a></li>';
+        });
+        artWiki[type] += '</div>';
+    }).fail(function(e) {
+        console.log("media wiki api error:" + e);
+    });
+};
 
-$.ajax({
-url: wikiUrl,
-dataType: "jsonp",
-context: document.body,
-success: function(data) {
-  //console.log("success:" + data);
-  var articleList = data[1];
-  artWiki['Recife'] = '<div class="wikipedia-container">';
-  artWiki['Recife'] += '<h3>Links Relevantes sobre o Recife</h3>';
-  articleList.forEach(function (article) {
-	var url = 'https://en.wikipedia.org/wiki/' + article;
-	artWiki['Recife'] += '<li><a href="' + url + '">' +
-		article + '</a></li>';
-	clearTimeout(wikiRequestTimeout);
-  });
-  artWiki['Recife'] += '</div>';
+var lastWikiUpd = 0;
+
+function updWikiArticles() {
+    // note: used for in because break statment, for in has no break.
+    for (var indx in myView.placeList()) {
+        var place = myView.placeList()[indx];
+        if (lastWikiUpd == indx) {
+            lastWikiUpd++;
+            getWikiArticle(place.type());
+            setTimeout(updWikiArticles, 350); //recursive, kind of
+            break; // wait next cycle, avoid google APIs errors for too many of calls.
+        };
+    };
+};
+
+
+menuIcon = $('.menuIcon');
+
+function toggleMenu() {
+    $('.search-box').toggleClass('show-box');
+    $('.search-box').toggleClass('hidden-box');
+    $('.map').toggleClass('menu');
+    $('.map').toggleClass('no-menu');
 }
-}).done(function(data) {
-//console.log(data);
-}).fail(function(e) {
-console.log("error:" + e);
-alert( "error:" + e );
+menuIcon.on('click', function() {
+    toggleMenu();
 });

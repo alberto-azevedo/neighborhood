@@ -1,5 +1,5 @@
 //app.js
-//console.log("app.js");
+
 var PLACES = [{
         id: 'ChIJ8S4Vhx0ZqwcRcX69oLZp5_M',
         name: 'João da Carne de Sol',
@@ -64,15 +64,11 @@ var Place = function(data) {
     this.loc = ko.observable(data.loc);
     this.type = ko.observable(data.type);
 
-    this.nicknames = ko.observableArray(data.nicknames);
     this.selected = ko.observable(false);
-    this.togleSelected = function() {
-        this.selected(!this.selected());
-    };
     this.address = ko.observable('');
     this.setAddress = function(address) {
         this.address = address;
-    }
+    };
 }; // of Place
 
 var ViewModel = function() {
@@ -86,15 +82,18 @@ var ViewModel = function() {
         if (data.length == 0) {
             self.placeList().forEach(function(place) {
                 place.visible(true);
+                setMarker(place.id(),true);
             });
             return;
-        }
+        };
         self.placeList().forEach(function(place) {
             if (place.name().toLowerCase().indexOf(data.toLowerCase()) !== -1) {
                 place.visible(true);
+                setMarker(place.id(),true);
             } else {
                 place.visible(false);
-            }
+                setMarker(place.id(),false);
+            };
         });
     });
 
@@ -103,17 +102,18 @@ var ViewModel = function() {
         PLACES.forEach(function(placeElm) {
             self.placeList.push(new Place(placeElm));
         });
-    }
+    };
 
     this.setPlace = function(clickedPlace) {
         self.currentPlace(clickedPlace);
+        listItemClicked(clickedPlace.id());
     };
 
     this.setAddress = function(id, address) {
         self.placeList().forEach(function(place) {
             if (place.id() == id) {
                 place.setAddress(address);
-            }
+            };
         });
     };
 
@@ -121,24 +121,11 @@ var ViewModel = function() {
         self.placeList().forEach(function(place) {
             if (place.id() == id) {
                 self.currentPlace(place);
-            }
+            };
         });
     };
 
-    this.togleSelected = function(name) {
-        self.placeList().forEach(function(place) {
-            if (place.name() === name) {
-                place.togleSelected();
-            }
-        });
-    };
-	
     this.detailsEnabled = ko.observable(false);
 
     this.initPlaceList();
 };
-
- //init app
-//console.log("init app");
-var myView = new ViewModel();
-ko.applyBindings(myView);
