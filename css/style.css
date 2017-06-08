@@ -4,17 +4,12 @@ body {
     margin: 0;
     padding: 0;
 }
-.menu {
-    left: 12em;
-}
-.no-menu {
-    left: 16%;
-}
 .map {
     bottom: 0px;
     height: 100%;
     position: absolute;
     right: 0px;
+    left: 0;
 }
 #placelist {
     margin: 0;
@@ -48,12 +43,9 @@ body {
     display: flex;
     align-items: baseline;
 }
-.show-box {
-    transform: translate3d(0, 2em, 0);
-    transition: transform 0.2s;
-    width: 12em;
-}
 .search-box {
+    position: absolute;
+    z-index: 1;
     overflow: hidden;
     background: Gainsboro;
     border: 1px solid #999;
@@ -63,16 +55,27 @@ body {
     padding: 0;
     text-align: left;
 }
-.hidden-box {
-    transform: translate3d(-50em, 0, 0);
-    transition: transform 0.2s;
-    width: 35%
-}
 .header {
-    background: #4caf50;
+    z-index: 2;
+    background: rgba(76,175,80,0.65);
     color: #fff;
+    font-size: 26px;
     position: fixed;
     top: 0;
-    width: 100%;
+    width: 1em;
     padding: 0;
+}
+
+.closebtn {
+    position: absolute;
+    top: 0;
+    right: 5px;
+    font-size: 36px;
+    margin-left: 0;
+    padding: 0;
+    text-decoration: none;
+    font-size: 25px;
+    color: black;
+    display: block;
+    transition: 0.3s;
 }

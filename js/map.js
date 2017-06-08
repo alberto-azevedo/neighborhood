@@ -10,12 +10,9 @@ var highlightedIcon;
 var myView;
 
 function googleError() {
-    $('#error').attr('display', '');
-    $('#error').attr('height', '100%');
-    $('#map').attr('display', 'block');
-    $('#map').attr('height', 0);
     initApp();
-}
+    myView.mapLoaded(false);
+};
 
 function initMap() {
 
@@ -28,22 +25,19 @@ function initMap() {
     });
     if (typeof(map) == 'undefined') {
         googleError();
-    }
+    };
     largeInfowindow = new google.maps.InfoWindow();
     defaultIcon = makeMarkerIcon('0091ff');
     highlightedIcon = makeMarkerIcon('FFFF24');
 
     initApp();
 
+    myView.mapLoaded(true);
+
     setTimeout(updWikiArticles, 150); // start update wiki articles
     setTimeout(initmarkers, 80); // start makers
     setTimeout(updAdress, 350); // start update adresses
-    //menu on for wide screen
-    if ($(window).width() >= 800) {
-        toggleMenu();
-    }
 };
-
 
 var markers = [];
 
@@ -111,7 +105,13 @@ function initApp() {
     };
 
     ko.applyBindings(myView);
-}
+
+    //menu on for wide screen
+    if ($(window).width() >= 800) {
+      myView.toggleMenu();
+    };
+};
+
 // reacts when maker clicked
 function hndMarkerClicked(marker, place) {
     animate(marker);
@@ -135,9 +135,11 @@ function populateInfoWindow(marker, infowindow, place) {
             lat: place.loc().lat,
             lng: place.loc().lng
         };
-        geocodeAddress(position, place);
+        if (!fmtAddress[place.id()]) {
+          geocodeAddress(position, place);
+        };
         var infoCont = '<div>' + marker.title + '<br>' + fmtAddress[place.id()] + '</br></div><hr>';
-        var articleWiki = (typeof(artWiki[place.type()]) != "undefined") ? artWiki[place.type()] : "<em>Não foi possível acessar a Wikipédia<em>";
+        var articleWiki = (typeof(artWiki[place.type()]) != 'undefined') ? artWiki[place.type()] : '<em>Não foi possível acessar a Wikipédia<em>';
         infoCont += articleWiki;
         infowindow.setContent(infoCont);
         infowindow.open(map, marker);
@@ -163,7 +165,7 @@ function listItemClicked(id) {
     markers.forEach(function(marker) {
         if (marker.id == id) {
             myView.setPlaceById(id);
-            hndMarkerClicked(marker, myView.currentPlace())
+            hndMarkerClicked(marker, myView.currentPlace());
         };
     });
 };
@@ -192,8 +194,7 @@ function setMarker(id, visible) {
 var lastAddrUpd = 0;
 
 function updAdress() {
-    // note: used for in because break statment, for in has no break.
-    for (var indx in myView.placeList()) {
+    for (var indx = 0; indx < myView.placeList().length; indx++) {
         var place = myView.placeList()[indx];
         if (lastAddrUpd == indx) {
             lastAddrUpd++;
@@ -236,7 +237,7 @@ function getWikiArticle(type) {
     wikiUrl += '&format=json&callback=wikiCallBack';
     $.ajax({
         url: wikiUrl,
-        dataType: "jsonp",
+        dataType: 'jsonp',
         context: document.body,
         timeout: 1000
     }).done(function(data) {
@@ -249,16 +250,15 @@ function getWikiArticle(type) {
                 article + '</a></li>';
         });
         artWiki[type] += '</div>';
-    }).fail(function(e) {
-        console.log("media wiki api error:" + e);
+    }).fail(function( jqXHR, textStatus,e) {
+        console.log('media wiki api error code:' + jqXHR.status);
     });
 };
 
 var lastWikiUpd = 0;
 
 function updWikiArticles() {
-    // note: used for in because break statment, for in has no break.
-    for (var indx in myView.placeList()) {
+    for (var indx = 0; indx < myView.placeList().length; indx++) {
         var place = myView.placeList()[indx];
         if (lastWikiUpd == indx) {
             lastWikiUpd++;
@@ -268,16 +268,3 @@ function updWikiArticles() {
         };
     };
 };
-
-
-menuIcon = $('.menuIcon');
-
-function toggleMenu() {
-    $('.search-box').toggleClass('show-box');
-    $('.search-box').toggleClass('hidden-box');
-    $('.map').toggleClass('menu');
-    $('.map').toggleClass('no-menu');
-}
-menuIcon.on('click', function() {
-    toggleMenu();
-});

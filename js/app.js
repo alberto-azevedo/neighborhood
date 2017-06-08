@@ -37,7 +37,7 @@ var PLACES = [{
         type: 'Farmacia'
     },
     {
-        id: 'EkVSLiBQYWRyZSBBbmNoaWV0YSwgMjgxLTI5OSAtIE1hZGFsZW5hLCBSZWNpZmUgLSBQRSwgNTA3MTAtNDMwLCBCcmFzaWw',
+        id: 'EkVSLiBQYWRyZSBBbmNoaWV0YSwgMjkxLTI5OSAtIE1hZGFsZW5hLCBSZWNpZmUgLSBQRSwgNTA3MTAtNDMwLCBCcmFzaWw',
         name: 'Massa Nobre',
         loc: {
             lat: -8.047288,
@@ -125,7 +125,13 @@ var ViewModel = function() {
         });
     };
 
-    this.detailsEnabled = ko.observable(false);
+    this.mapLoaded = ko.observable(true);
+
+    this.menuVisible = ko.observable(false);
+
+    this.toggleMenu = function () {
+      self.menuVisible(!self.menuVisible());
+    };
 
     this.initPlaceList();
 };

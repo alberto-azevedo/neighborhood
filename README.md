@@ -10,3 +10,4 @@ Uses googleapis for map and geolocation and wikipedia API for info about the
 type of place.
 # Credits
 Uses code/solutions from google maps api doc, and Udacity Front End Developer courses.
+Slide menu idea from https://www.w3schools.com/howto/tryit.asp?filename=tryhow_js_sidenav.
